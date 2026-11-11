@@ -1,5 +1,7 @@
 #[path = "../src/windows_ocr.rs"]
 mod windows_ocr;
+#[path = "../src/winrt_runtime.rs"]
+mod winrt_runtime;
 
 fn main() {
     let languages = windows_ocr::available_languages();

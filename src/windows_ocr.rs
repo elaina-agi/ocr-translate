@@ -11,6 +11,9 @@ use windows::{
 };
 
 pub fn available_languages() -> Vec<String> {
+    let Ok(_apartment) = crate::winrt_runtime::Apartment::current() else {
+        return Vec::new();
+    };
     let Ok(languages) = OcrEngine::AvailableRecognizerLanguages() else {
         return Vec::new();
     };
@@ -35,6 +38,9 @@ pub struct Word {
 
 /// Recognized lines, each a list of words with their positions.
 pub fn recognize_lines(path: &Path, language_tag: &str) -> Result<Vec<Vec<Word>>, String> {
+    // Keep this guard outside `run`: OcrResult and its line/word interfaces are read here too.
+    // Only owned Strings/rectangles leave the apartment, never WinRT interface pointers.
+    let _apartment = crate::winrt_runtime::Apartment::current()?;
     let (result, scale) = run(path, language_tag)?;
     let read = |error: windows::core::Error| format!("读取 OCR 结果失败：{error}");
     let mut lines = Vec::new();

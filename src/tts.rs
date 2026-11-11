@@ -207,7 +207,11 @@ pub struct Request {
 
 /// Language tags of the installed Windows voices, for the settings page.
 pub fn installed_languages() -> Vec<String> {
-    let mut languages: Vec<String> = windows_voices()
+    // Keep voice interfaces alive until enumeration has converted and dropped them all.
+    let Ok(apartment) = crate::winrt_runtime::Apartment::current() else {
+        return Vec::new();
+    };
+    let mut languages: Vec<String> = windows_voices(&apartment)
         .into_iter()
         .map(|(language, _)| language)
         .collect();
@@ -216,7 +220,7 @@ pub fn installed_languages() -> Vec<String> {
     languages
 }
 
-fn windows_voices() -> Vec<(String, VoiceInformation)> {
+fn windows_voices(_apartment: &crate::winrt_runtime::Apartment) -> Vec<(String, VoiceInformation)> {
     let Ok(voices) = SpeechSynthesizer::AllVoices() else {
         return Vec::new();
     };
@@ -336,11 +340,14 @@ impl Speaker {
 }
 
 fn speak(request: &Request, cancel: &AtomicBool, volume: f64) -> Result<(), String> {
+    // Every engine eventually uses WinRT streams and MediaPlayer on this worker.
+    // All streams/player callbacks are released before the apartment guard leaves scope.
+    let apartment = crate::winrt_runtime::Apartment::mta()?;
     if request.text.trim().is_empty() {
         return Err("没有可朗读的文字。".into());
     }
     let (stream, content_type) = match request.engine {
-        Engine::Windows => windows_stream(request)?,
+        Engine::Windows => windows_stream(request, &apartment)?,
         Engine::Google => (memory_stream(&google_audio(request, cancel)?)?, mp3()),
         Engine::Azure => (memory_stream(&azure_audio(request, cancel)?)?, mp3()),
     };
@@ -354,9 +361,12 @@ fn mp3() -> HSTRING {
     HSTRING::from("audio/mpeg")
 }
 
-fn windows_stream(request: &Request) -> Result<(IRandomAccessStream, HSTRING), String> {
+fn windows_stream(
+    request: &Request,
+    apartment: &crate::winrt_runtime::Apartment,
+) -> Result<(IRandomAccessStream, HSTRING), String> {
     let failed = |error: windows::core::Error| format!("Windows 语音合成失败：{error}");
-    let voice = windows_voice(request.voice)?;
+    let voice = windows_voice(request.voice, apartment)?;
     let synthesizer =
         SpeechSynthesizer::new().map_err(|error| format!("无法创建 Windows 语音合成：{error}"))?;
     synthesizer.SetVoice(&voice).map_err(failed)?;
@@ -372,8 +382,11 @@ fn windows_stream(request: &Request) -> Result<(IRandomAccessStream, HSTRING), S
 }
 
 /// The installed voice for the exact language, else one for the same base language.
-fn windows_voice(voice: &Voice) -> Result<VoiceInformation, String> {
-    let voices = windows_voices();
+fn windows_voice(
+    voice: &Voice,
+    apartment: &crate::winrt_runtime::Apartment,
+) -> Result<VoiceInformation, String> {
+    let voices = windows_voices(apartment);
     let base = |tag: &str| {
         tag.split('-')
             .next()

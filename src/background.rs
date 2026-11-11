@@ -128,8 +128,22 @@ impl Background {
         }
         self.generation += 1;
         let generation = self.generation;
-        let mut process = ProcessCommand::new(ui_executable()?)
-            .arg("--ui-child")
+        let mut command = ProcessCommand::new(ui_executable()?);
+        command.arg("--ui-child");
+        // Real-UI tests must not load or migrate the user's settings. APPDATA is not
+        // sufficient on Windows, where dirs resolves the system Known Folder instead.
+        #[cfg(test)]
+        command
+            .arg("--ui-test-config")
+            .arg(std::env::temp_dir().join(format!(
+            "ocr-translate-ui-test-{}-{generation}-{}.json",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        )));
+        let mut process = command
             .creation_flags(0x08000000)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
@@ -582,6 +596,7 @@ pub fn run() -> Result<(), String> {
     else {
         return Ok(());
     };
+    let _apartment = crate::winrt_runtime::Apartment::mta()?;
     let thread_id = unsafe { GetCurrentThreadId() };
     let mut message = MSG::default();
     let _ = unsafe { PeekMessageW(&mut message, None, 0, 0, PM_NOREMOVE) };
@@ -839,6 +854,10 @@ mod tests {
             id: 1,
             cancelled: Arc::new(AtomicBool::new(false)),
         });
+        app.send(Event::TaskStarted(1));
+        app.send(Event::Hotkey(HotkeyEvent::Captured(Err(
+            screen_clip::CANCELLED.into(),
+        ))));
         app.send(Event::Request {
             task_id: 1,
             result: RequestResult::Error("test task completed".into()),

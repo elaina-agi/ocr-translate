@@ -4,7 +4,7 @@
 
 A lightweight Windows screenshot OCR and translation tool. Press `Ctrl+Shift+T` to select a screen region, then view the recognized source text, translation progress, and result in a floating popup. You can also translate images or typed text from the main window.
 
-[Download for Windows](https://github.com/abkkkbb/ocr-translate/releases/latest) · [All releases](https://github.com/abkkkbb/ocr-translate/releases)
+[Download for Windows](https://github.com/elaina-agi/ocr-translate/releases/latest) · [All releases](https://github.com/elaina-agi/ocr-translate/releases)
 
 ## Features
 
@@ -23,7 +23,7 @@ A lightweight Windows screenshot OCR and translation tool. Press `Ctrl+Shift+T` 
 
 ## Download and run
 
-1. Visit the [latest release](https://github.com/abkkkbb/ocr-translate/releases/latest) and download the Windows `.exe` asset.
+1. Visit the [latest release](https://github.com/elaina-agi/ocr-translate/releases/latest) and download the Windows `.exe` asset.
 2. Run the executable. The Visual C++ Redistributable is not required separately.
 3. Press `Ctrl+Shift+T` to select a screen region, or choose an image or enter text in the main window.
 4. Configure credentials, service URL, and model in Settings when using Volcengine or a vision provider.
@@ -59,4 +59,4 @@ The release executable is written to `target/release/ocr-translate.exe`. This is
 
 ## Feedback
 
-Please report bugs or suggestions through [GitHub Issues](https://github.com/abkkkbb/ocr-translate/issues).
+Please report bugs or suggestions through [GitHub Issues](https://github.com/elaina-agi/ocr-translate/issues).

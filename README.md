@@ -4,7 +4,7 @@
 
 一个轻量的 Windows 截图 OCR 与翻译工具。使用 `Ctrl+Shift+T` 框选屏幕，识别原文后在悬浮窗口中查看译文；也可以在主窗口翻译图片或直接输入的文字。
 
-[下载 Windows 版本](https://github.com/abkkkbb/ocr-translate/releases/latest) · [查看所有版本](https://github.com/abkkkbb/ocr-translate/releases)
+[下载 Windows 版本](https://github.com/elaina-agi/ocr-translate/releases/latest) · [查看所有版本](https://github.com/elaina-agi/ocr-translate/releases)
 
 ## 功能
 
@@ -23,7 +23,7 @@
 
 ## 下载与运行
 
-1. 前往[最新版本页面](https://github.com/abkkkbb/ocr-translate/releases/latest)，下载 Windows `.exe` 附件。
+1. 前往[最新版本页面](https://github.com/elaina-agi/ocr-translate/releases/latest)，下载 Windows `.exe` 附件。
 2. 运行程序。无需单独安装 Visual C++ Redistributable。
 3. 按 `Ctrl+Shift+T` 框选屏幕，或在主窗口选择图片、输入文字。
 4. 如使用火山引擎或视觉模型，在设置中配置对应密钥、服务地址和模型。
@@ -59,4 +59,4 @@ cargo build --release --locked
 
 ## 反馈
 
-欢迎通过 [GitHub Issues](https://github.com/abkkkbb/ocr-translate/issues) 报告问题或提出建议。
+欢迎通过 [GitHub Issues](https://github.com/elaina-agi/ocr-translate/issues) 报告问题或提出建议。

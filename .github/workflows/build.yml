@@ -27,3 +27,10 @@ jobs:
           name: ocr-translate-${{ github.run_number }}
           path: target/release/ocr-translate.exe
           if-no-files-found: error
+
+      # Retain the EXACT build's PDB separately; rebuilding later does not recreate matching symbols.
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ocr-translate-symbols-${{ github.run_number }}
+          path: target/release/ocr_translate.pdb
+          if-no-files-found: error

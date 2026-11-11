@@ -14,6 +14,7 @@ mod tray;
 mod tts;
 mod volcengine;
 mod windows_ocr;
+mod winrt_runtime;
 
 use base64::{engine::general_purpose::STANDARD, Engine as _};
 use eframe::egui::{self, Color32, RichText, Stroke};
@@ -32,7 +33,7 @@ use std::{
 };
 
 const CONFIG_FILE: &str = "config.json";
-const OFFICIAL_WEBSITE: &str = "https://github.com/abkkkbb/ocr-translate";
+const OFFICIAL_WEBSITE: &str = "https://github.com/elaina-agi/ocr-translate";
 const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
 const MAX_IMAGE_BYTES: u64 = 20 * 1024 * 1024;
 const DEFAULT_FONT_SIZE: u8 = 13;
@@ -850,11 +851,10 @@ struct OcrTranslateApp {
 }
 
 impl OcrTranslateApp {
-    fn new(cc: &eframe::CreationContext<'_>) -> Self {
+    fn new(cc: &eframe::CreationContext<'_>, config_path: PathBuf) -> Self {
         let ctx = &cc.egui_ctx;
         tray::AppTray::bind_window(cc);
         let client = ipc::Client::connect(ctx.clone());
-        let config_path = config_path();
         let config_existed = config_path.exists();
         let mut config = load_config(&config_path);
         let (plaintext_secrets, undecryptable_secrets) = config.reveal_secrets();
@@ -3373,7 +3373,35 @@ fn main() -> eframe::Result {
     run_ui()
 }
 
+// Private UI-child test hook. Unlike APPDATA overrides, an explicit path does not depend on
+// Windows Known Folder resolution and cannot accidentally load the user's real credentials.
+fn ui_test_config_path(
+    args: impl IntoIterator<Item = std::ffi::OsString>,
+) -> Result<Option<PathBuf>, String> {
+    let mut args = args.into_iter();
+    let mut path = None;
+    while let Some(arg) = args.next() {
+        if arg == "--ui-test-config" {
+            if path.is_some() {
+                return Err("测试配置路径不能重复指定。".into());
+            }
+            let value = args.next().map(PathBuf::from).ok_or("缺少测试配置路径。")?;
+            if !value.is_absolute() {
+                return Err("测试配置必须使用绝对路径。".into());
+            }
+            path = Some(value);
+        }
+    }
+    Ok(path)
+}
+
 fn run_ui() -> eframe::Result {
+    let config_path = ui_test_config_path(std::env::args_os().skip(1))
+        .map_err(|error| eframe::Error::AppCreation(Box::new(std::io::Error::other(error))))?
+        .unwrap_or_else(config_path);
+    // winit/file dialogs expect the UI thread to be STA; its runtime is independent of the parent.
+    let _apartment = winrt_runtime::Apartment::sta()
+        .map_err(|error| eframe::Error::AppCreation(Box::new(std::io::Error::other(error))))?;
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_visible(false)
@@ -3388,9 +3416,9 @@ fn run_ui() -> eframe::Result {
     eframe::run_native(
         "OCR Translate",
         options,
-        Box::new(|cc| {
+        Box::new(move |cc| {
             install_system_fonts(&cc.egui_ctx);
-            Ok(Box::new(OcrTranslateApp::new(cc)))
+            Ok(Box::new(OcrTranslateApp::new(cc, config_path)))
         }),
     )
 }
@@ -3398,6 +3426,20 @@ fn run_ui() -> eframe::Result {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn ui_test_config_override_requires_one_absolute_path() {
+        let parse = |args: &[&str]| ui_test_config_path(args.iter().map(std::ffi::OsString::from));
+        assert_eq!(parse(&["--ui-child"]).unwrap(), None);
+        assert!(parse(&["--ui-child", "--ui-test-config"]).is_err());
+        assert!(parse(&["--ui-test-config", "relative.json"]).is_err());
+        let path = r"C:\isolated test\config.json";
+        assert_eq!(
+            parse(&["--ui-child", "--ui-test-config", path]).unwrap(),
+            Some(PathBuf::from(path))
+        );
+        assert!(parse(&["--ui-test-config", path, "--ui-test-config", path]).is_err());
+    }
 
     fn render_about_card(
         ctx: &egui::Context,
